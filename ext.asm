@@ -21,6 +21,7 @@ global jmp_instr
 global push_instr
 global if_instr
 global call_instr
+global ret_instr
 global printi8
 
 run:
@@ -64,7 +65,14 @@ jmp_instr:
   next_instr
 
 call_instr:
+  mov rcx, r13
+  inc rcx
+  mov r13, qword[r12 - 8]
+  mov qword[r12 - 8], rcx
+  next_instr
 
+ret_instr:
+  mov r13, qword[r12 - 8]
   next_instr
 
 printi8:

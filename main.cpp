@@ -23,10 +23,15 @@ extern "C" void* printi8;
 extern "C" void* add_instr;
 extern "C" void* jmp_instr;
 extern "C" void* if_instr;
+extern "C" void* call_instr;
+extern "C" void* ret_instr;
 extern "C" void* run_exit;
 extern "C" void run(void* code);
 
-constexpr std::array<void*, 7> instr = {&run_exit, &push_instr, nullptr, &add_instr, &printi8, &if_instr, &jmp_instr};
+constexpr std::array<void*, 9> instr = {
+  &run_exit, &push_instr, nullptr, 
+  &add_instr, &printi8, &if_instr, &jmp_instr, 
+  &call_instr, &ret_instr};
 void* instr_ptr = (void*)instr.data();
 
 enum class Instr: uint8_t {
@@ -54,7 +59,7 @@ struct Class {
   static constexpr PropIndex UndefinedIndex = std::numeric_limits<PropIndex>::max();
 
   PropIndex get_prop() const {
-    
+    return UndefinedIndex;    
   }
 
 };
@@ -64,13 +69,13 @@ struct String : Class {
 };
 
 namespace detail {
-    // Non-enum: identity type
-    template<typename T, bool IsEnum = std::is_enum_v<T>>
-    struct underlying_type { using type = T; };
-    
-    // Enum: std::underlying_type
-    template<typename T>
-    struct underlying_type<T, true> : std::underlying_type<T> {};
+// Non-enum: identity type
+template<typename T, bool IsEnum = std::is_enum_v<T>>
+struct underlying_type { using type = T; };
+
+// Enum: std::underlying_type
+template<typename T>
+struct underlying_type<T, true> : std::underlying_type<T> {};
 }
 
 template<typename T>
@@ -80,18 +85,14 @@ struct Code {
   std::vector<uint8_t> code;
 
   template <typename T>
-    void append(T value) {
-      if constexpr (sizeof(value) == 1) {
-        code.emplace_back((integral_type_t<T>)value);
-      } else {
-        constexpr auto value_size = sizeof(value);
-        code.resize(code.size() + value_size);
-        *(integral_type_t<T>*)&code[code.size() - value_size] = value;
-      }
+  void append(T value) {
+    if constexpr (sizeof(value) == 1) {
+      code.emplace_back((integral_type_t<T>)value);
+    } else {
+      constexpr auto value_size = sizeof(value);
+      code.resize(code.size() + value_size);
+      *(integral_type_t<T>*)&code[code.size() - value_size] = value;
     }
-
-  void commit() {
-
   }
 };
 
@@ -101,34 +102,24 @@ extern "C" void print_int64(int64_t value) {
 
 int main() {
   Code code;
-  code.append(Instr::Jump);
-  const auto off3 = code.code.size();
 
-  code.append(0ULL);
-  code.append(Instr::Push);
-  code.append(1ULL);
-  code.append(Instr::If);
-  const auto off1 = code.code.size();
-
-  code.append(0ULL);
   code.append(Instr::Push);
   code.append(100ULL);
   code.append(Instr::Print);
-
-  const auto off2 = code.code.size();
-  *(uintptr_t*)&code.code[off1] = off2 - off1 + 1;
-
-  *(uintptr_t*)&code.code[off3] = off2 - off3 + 1;
   code.append(Instr::Push);
-  code.append(101ULL);
-  code.append(Instr::Print);
+  const auto call_offset = code.code.size();
+  code.append(0ULL);
+  code.append(Instr::Call);
   code.append(Instr::Exit);
+
+  const auto off = code.code.size();  
+  code.append(Instr::Push);
+  code.append(10000ULL);
+  code.append(Instr::Print);
+  code.append(Instr::Ret);
+
+  *(void**)&code.code[call_offset] = (void*)&code.code[off];
   run(code.code.data());
 
-
-  Class c;
-  c.append("a");
-  c.append("b");
-  c.append("c");
   return 0;
 }
