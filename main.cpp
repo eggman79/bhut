@@ -32,6 +32,8 @@ enum class Instr: uint8_t {
   Print,
   If,
   Jump,
+  Call,
+  Ret,
 };
 
 namespace detail {

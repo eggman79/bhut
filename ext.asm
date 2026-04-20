@@ -20,6 +20,7 @@ global add_instr
 global jmp_instr
 global push_instr
 global if_instr
+global call_instr
 global printi8
 
 run:
