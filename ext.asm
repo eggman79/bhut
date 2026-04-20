@@ -63,6 +63,10 @@ jmp_instr:
   add r13, rcx
   next_instr
 
+call_instr:
+
+  next_instr
+
 printi8:
   push r12
   push r13

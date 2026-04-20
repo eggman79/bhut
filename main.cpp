@@ -1,7 +1,12 @@
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 #include <array>
 #include <vector>
+#include <deque>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include <iostream>
 
 std::array<uint8_t, 1024> heap;
@@ -34,6 +39,28 @@ enum class Instr: uint8_t {
   Jump,
   Call,
   Ret,
+};
+
+struct Class {
+  using PropIndex = uint16_t;
+  std::deque<std::string> ordered_props;
+  std::unordered_map<std::string_view, PropIndex> props;
+
+  void append(std::string_view prop_name) {
+    ordered_props.emplace_back(prop_name);
+    props.emplace(ordered_props.back(), ordered_props.size() - 1);
+  }
+
+  static constexpr PropIndex UndefinedIndex = std::numeric_limits<PropIndex>::max();
+
+  PropIndex get_prop() const {
+    
+  }
+
+};
+
+struct String : Class {
+
 };
 
 namespace detail {
@@ -97,5 +124,11 @@ int main() {
   code.append(Instr::Print);
   code.append(Instr::Exit);
   run(code.code.data());
+
+
+  Class c;
+  c.append("a");
+  c.append("b");
+  c.append("c");
   return 0;
 }
