@@ -11,14 +11,15 @@ section .text
 extern heap_ptr
 extern stack_ptr
 extern print_int64
-
 extern instr_ptr;
-global test
-global add
+
 global run
 global run_exit
-global push
-global iff
+
+global add_instr
+global jmp_instr
+global push_instr
+global if_instr
 global printi8
 
 run:
@@ -29,21 +30,21 @@ run:
 run_exit:
   ret
 
-push:
+push_instr:
   mov rcx, qword[r13 + 1]
   mov qword[r12], rcx
   add r12, 8
   add r13, 9
   next_instr
 
-add:
+add_instr:
   mov rcx, qword[r12 - 8] 
   add qword[r12 - 16], rcx
   sub r12, 8
   inc r13
   next_instr
 
-iff:
+if_instr:
   sub r12, 8
   mov rcx, qword[r12]
   test rcx, rcx
@@ -54,6 +55,11 @@ iff:
 if_false:
   add r13, 9
 if_exit:
+  next_instr
+
+jmp_instr:
+  mov rcx, qword[r13 + 1]
+  add r13, rcx
   next_instr
 
 printi8:

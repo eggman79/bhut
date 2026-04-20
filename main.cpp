@@ -13,14 +13,15 @@ void* stack_ptr = (void*)stack.data();
 std::array<uint8_t, 1024> code;
 void* code_ptr = (void*)code.data();
 
-extern "C" void* push;
+extern "C" void* push_instr;
 extern "C" void* printi8;
-extern "C" void* add;
-extern "C" void* iff;
+extern "C" void* add_instr;
+extern "C" void* jmp_instr;
+extern "C" void* if_instr;
 extern "C" void* run_exit;
 extern "C" void run(void* code);
 
-constexpr std::array<void*, 6> instr = {&run_exit, &push, nullptr, &add, &printi8, &iff};
+constexpr std::array<void*, 7> instr = {&run_exit, &push_instr, nullptr, &add_instr, &printi8, &if_instr, &jmp_instr};
 void* instr_ptr = (void*)instr.data();
 
 enum class Instr: uint8_t {
@@ -30,6 +31,7 @@ enum class Instr: uint8_t {
   Add,
   Print,
   If,
+  Jump,
 };
 
 namespace detail {
@@ -70,6 +72,10 @@ extern "C" void print_int64(int64_t value) {
 
 int main() {
   Code code;
+  code.append(Instr::Jump);
+  const auto off3 = code.code.size();
+
+  code.append(0ULL);
   code.append(Instr::Push);
   code.append(1ULL);
   code.append(Instr::If);
@@ -83,6 +89,7 @@ int main() {
   const auto off2 = code.code.size();
   *(uintptr_t*)&code.code[off1] = off2 - off1 + 1;
 
+  *(uintptr_t*)&code.code[off3] = off2 - off3 + 1;
   code.append(Instr::Push);
   code.append(101ULL);
   code.append(Instr::Print);
