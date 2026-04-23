@@ -104,6 +104,19 @@ using integral_type_t = typename detail::underlying_type<T>::type;
 struct Code {
   std::vector<uint8_t> code;
 
+  struct Label {
+    Label(size_t pos) : pos(pos) {}
+    Label(const Label&) = default;
+    Label(Label&&) = default;
+    Label& operator=(const Label&) = default;
+    Label& operator=(Label&&) = default;
+    const size_t pos;
+  };
+
+  Label get_label() const {
+    return Label(code.size());
+  }
+
   template <typename T>
   void append(T value) {
     if constexpr (sizeof(value) == 1) {
@@ -271,8 +284,7 @@ void test_fib() {
   c.append(0ULL);
 
 
-
-    const auto true_addr = c.code.size();
+  const auto true_addr = c.code.size();
   c.append(Instr::Ret);
 
   c.update_call_addr(ifle_addr, true_addr);
