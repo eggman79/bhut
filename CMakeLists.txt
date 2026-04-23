@@ -12,4 +12,4 @@ add_executable(myapp
     main.cpp
     ext.asm
 )
-target_compile_features(myapp PRIVATE cxx_std_23)
+target_compile_features(myapp PRIVATE cxx_std_17)

@@ -2,6 +2,7 @@
 #include <cinttypes>
 #include <limits>
 #include <type_traits>
+#include <iostream>
 #include <array>
 #include <vector>
 #include <deque>
@@ -29,17 +30,22 @@ extern "C" void* add_instr;
 extern "C" void* sub_instr;
 extern "C" void* jmp_instr;
 extern "C" void* if_instr;
+extern "C" void* ifg_instr;
+extern "C" void* ifl_instr;
+extern "C" void* ifge_instr;
+extern "C" void* ifle_instr;
 extern "C" void* call_instr;
 extern "C" void* ret_instr;
 extern "C" void* dup_instr;
 extern "C" void* run_exit;
 extern "C" void run(void* code);
 
-constexpr std::array<void*, 11> instr = {
+constexpr std::array<void*, 15> instr = {
   &run_exit, &push_instr, &pop_instr,
   &add_instr, &sub_instr,
-  &printi8, &if_instr, &jmp_instr, 
-  &call_instr, &ret_instr, &dup_instr};
+  &printi8, &if_instr, &ifg_instr, 
+  &ifl_instr, &ifge_instr, &ifle_instr, 
+  &jmp_instr, &call_instr, &ret_instr, &dup_instr};
 
 void* instr_ptr = (void*)instr.data();
 
@@ -51,6 +57,10 @@ enum class Instr: uint8_t {
   Sub,
   Print,
   If,
+  Ifg,
+  Ifl,
+  Ifge,
+  Ifle,
   Jump,
   Call,
   Ret,
@@ -110,6 +120,10 @@ struct Code {
   }
 };
 
+struct Object {
+
+};
+
 struct Strings {
   std::vector<std::string> items;
 };
@@ -118,8 +132,61 @@ extern "C" void print_int64(int64_t value) {
   printf("%" PRId64 "\n", value);
 }
 
-int main() {
+struct Module {
+  std::vector<std::string> names;
   Code code;
+};
+
+void test_call_if() {
+  Code code;
+  code.append(Instr::Push);
+  code.append(8ULL);
+  code.append(Instr::Push);
+
+  const auto call_addr = code.code.size();
+  code.append(0ULL);
+  code.append(Instr::Call);
+  code.append(Instr::Print);
+  code.append(Instr::Exit);
+
+
+  const auto method_addr = code.code.size();
+
+  code.append(Instr::Push);
+  code.append(8ULL);
+
+  code.append(Instr::Ifge);
+
+  const auto if_addr = code.code.size();
+  code.append(0ULL);
+
+  code.append(Instr::Push);
+  code.append(0ULL);
+
+  code.append(Instr::Jump);
+
+  const auto jump_addr = code.code.size();
+  code.append(0ULL);
+  const auto true_addr = code.code.size();
+  code.append(Instr::Push);
+  code.append(1ULL);
+
+  const auto ret_addr = code.code.size();
+
+  code.append(Instr::Ret);
+
+  code.update_call_addr(jump_addr, ret_addr);
+  code.update_call_addr(call_addr, method_addr);
+  code.update_call_addr(if_addr, true_addr);
+
+  run(code.code.data());
+
+}
+
+void test_simple() {
+
+  Module m;
+  Code& code = m.code;
 
   code.append(Instr::Push);
   code.append(1ULL);
@@ -135,7 +202,7 @@ int main() {
   code.append(Instr::Print);
   code.append(Instr::Print);
   code.append(Instr::Print);
-code.append(Instr::Push);
+  code.append(Instr::Push);
   code.append(10ULL);
 
   code.append(Instr::Push);
@@ -172,6 +239,47 @@ code.append(Instr::Push);
   code.update_call_addr(call_addr3, method_addr);
 
   run(code.code.data());
+}
 
+void test_fib() {
+  Code c;
+
+  c.append(Instr::Push);
+  c.append(8ULL);
+
+  c.append(Instr::Push);
+  c.append(0ULL);
+  c.append(Instr::Call);
+  c.append(Instr::Print);
+  c.append(Instr::Exit);
+
+  const auto fib_method_addr = c.code.size();
+  c.append(Instr::Dup);
+  c.append(Instr::Push);
+  c.append(1ULL);
+  c.append(Instr::Ifle);
+
+  const auto ifle_addr = c.code.size();
+  c.append(0ULL);
+
+  c.append(Instr::Push);
+  c.append(1ULL);
+
+  c.append(Instr::Sub);
+  c.append(Instr::Call);
+  const auto fib1_call_addr = c.code.size();
+  c.append(0ULL);
+
+
+
+    const auto true_addr = c.code.size();
+  c.append(Instr::Ret);
+
+  c.update_call_addr(ifle_addr, true_addr);
+  run(c.code.data());
+}
+
+int main() {
+  test_call_if();
   return 0;
 }
