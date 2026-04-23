@@ -1,20 +1,25 @@
+%define call_stack_reg r12
+%define stack_reg r13
+%define code_reg r14
+%define instr_reg r15
+
 %macro next_instr 0
-  mov al, byte[r13]
+  mov al, byte[code_reg]
   movzx rcx, al
   shl rcx, 3
-  add rcx, r14
+  add rcx, instr_reg
   jmp qword[rcx]
 %endmacro
 
 %macro if_cond 1
     %if %1 = 0     ; jz case (ZF)
-        sub r12, 8
-        mov rcx, qword [r12]
+        sub stack_reg, 8
+        mov rcx, qword [stack_reg]
         test rcx, rcx
     %else
-        mov rcx, qword[r12 - 16]
-        mov rbx, qword[r12 - 8]
-        sub r12, 16
+        mov rcx, qword[stack_reg - 16]
+        mov rbx, qword[stack_reg - 8]
+        sub stack_reg, 16
         cmp rcx, rbx
     %endif
     
@@ -30,11 +35,11 @@
         jle %%true
     %endif
 
-    add r13, 9
+    add code_reg, 9
     jmp %%exit
 %%true:
-    mov rcx, qword [r13 + 1]
-    mov r13, rcx
+    mov rcx, qword [code_reg + 1]
+    mov code_reg, rcx
 %%exit:
     next_instr
 %endmacro
@@ -66,37 +71,37 @@ global dup_instr
 global printi8
 
 run:
-  mov r11, qword[rel call_stack_ptr]
-  mov r12, qword[rel stack_ptr]
-  mov r13, rsi
-  mov r14, qword[rel instr_ptr]
+  mov call_stack_reg, qword[rel call_stack_ptr]
+  mov stack_reg, qword[rel stack_ptr]
+  mov code_reg, rsi
+  mov instr_reg, qword[rel instr_ptr]
   next_instr
 run_exit:
   ret
 
 push_instr:
-  mov rcx, qword[r13 + 1]
-  mov qword[r12], rcx
-  add r12, 8
-  add r13, 9
+  mov rcx, qword[code_reg + 1]
+  mov qword[stack_reg], rcx
+  add stack_reg, 8
+  add code_reg, 9
   next_instr
 
 pop_instr:
-  sub r12, 8
+  sub stack_reg, 8
   next_instr
 
 add_instr:
-  mov rcx, qword[r12 - 8] 
-  add qword[r12 - 16], rcx
-  sub r12, 8
-  inc r13
+  mov rcx, qword[stack_reg - 8] 
+  add qword[stack_reg - 16], rcx
+  sub stack_reg, 8
+  inc code_reg
   next_instr
 
 sub_instr:
-  mov rcx, qword[r12 - 8] 
-  sub qword[r12 - 16], rcx
-  sub r12, 8
-  inc r13
+  mov rcx, qword[stack_reg - 8] 
+  sub qword[stack_reg - 16], rcx
+  sub stack_reg, 8
+  inc code_reg
   next_instr
 
 if_instr:
@@ -115,42 +120,34 @@ ifle_instr:
   if_cond 4
 
 jmp_instr:
-  mov rcx, qword[r13 + 1]
-  mov r13, rcx
+  mov rcx, qword[code_reg + 1]
+  mov code_reg, rcx
   next_instr
 
 call_instr:
-  mov rcx, r13
+  mov rcx, code_reg
   inc rcx
-  sub r12, 8
-  mov r13, qword[r12]
-  mov qword[r11], rcx
-  add r11, 8
+  sub stack_reg, 8
+  mov code_reg, qword[stack_reg]
+  mov qword[call_stack_reg], rcx
+  add call_stack_reg, 8
   next_instr
 
 ret_instr:
-  sub r11, 8
-  mov r13, qword[r11]
+  sub call_stack_reg, 8
+  mov code_reg, qword[call_stack_reg]
   next_instr
 
 dup_instr:
-  inc r13
-  mov rcx, qword[r12 - 8]
-  mov qword[r12], rcx
-  add r12, 8
+  inc code_reg
+  mov rcx, qword[stack_reg - 8]
+  mov qword[stack_reg], rcx
+  add stack_reg, 8
   next_instr
 
 printi8:
-  push r11
-  push r12
-  push r13
-  push r14
-  mov rdi, qword[r12 - 8]
+  mov rdi, qword[stack_reg - 8]
   call print_int64
-  pop r14
-  pop r13
-  pop r12
-  pop r11
-  sub r12, 8
-  inc r13
+  sub stack_reg, 8
+  inc code_reg
   next_instr
