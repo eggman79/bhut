@@ -68,15 +68,26 @@ global ifle_instr
 global call_instr
 global ret_instr
 global dup_instr
+global swap_instr
 global printi8
 
 run:
+  push rbx
+  push r12
+  push r13
+  push r14
+  push r15
   mov call_stack_reg, qword[rel call_stack_ptr]
   mov stack_reg, qword[rel stack_ptr]
   mov code_reg, rsi
   mov instr_reg, qword[rel instr_ptr]
   next_instr
 run_exit:
+  pop r15
+  pop r14
+  pop r13
+  pop r12
+  pop rbx
   ret
 
 push_instr:
@@ -88,6 +99,7 @@ push_instr:
 
 pop_instr:
   sub stack_reg, 8
+  inc code_reg
   next_instr
 
 add_instr:
@@ -144,6 +156,14 @@ dup_instr:
   mov qword[stack_reg], rcx
   add stack_reg, 8
   next_instr
+
+swap_instr:
+    mov rcx, qword[stack_reg - 8]
+    mov rdx, qword[stack_reg - 16]
+    mov qword[stack_reg - 8], rdx
+    mov qword[stack_reg - 16], rcx
+    inc code_reg
+    next_instr
 
 printi8:
   mov rdi, qword[stack_reg - 8]

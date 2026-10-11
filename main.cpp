@@ -2,14 +2,12 @@
 #include <cinttypes>
 #include <limits>
 #include <type_traits>
-#include <iostream>
 #include <array>
 #include <vector>
 #include <deque>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <iostream>
 
 std::array<uint8_t, 1024> heap;
 void* heap_ptr = (void*)heap.data();
@@ -37,15 +35,17 @@ extern "C" void* ifle_instr;
 extern "C" void* call_instr;
 extern "C" void* ret_instr;
 extern "C" void* dup_instr;
+extern "C" void* swap_instr;
 extern "C" void* run_exit;
 extern "C" void run(void* code);
 
-constexpr std::array<void*, 15> instr = {
+constexpr std::array<void*, 16> instr = {
   &run_exit, &push_instr, &pop_instr,
   &add_instr, &sub_instr,
   &printi8, &if_instr, &ifg_instr, 
   &ifl_instr, &ifge_instr, &ifle_instr, 
-  &jmp_instr, &call_instr, &ret_instr, &dup_instr};
+  &jmp_instr, &call_instr, &ret_instr, 
+  &dup_instr, &swap_instr};
 
 void* instr_ptr = (void*)instr.data();
 
@@ -65,6 +65,7 @@ enum class Instr: uint8_t {
   Call,
   Ret,
   Dup,
+  Swap,
 };
 
 struct Class {
@@ -255,43 +256,48 @@ void test_simple() {
 }
 
 void test_fib() {
-  Code c;
+    Code c;
+    c.append(Instr::Push); c.append(26ULL);
+    c.append(Instr::Push);
+    const auto call0 = c.code.size(); c.append(0ULL);
+    c.append(Instr::Call);
+    c.append(Instr::Print);
+    c.append(Instr::Exit);
 
-  c.append(Instr::Push);
-  c.append(8ULL);
+    const auto fib = c.code.size();
+    c.append(Instr::Dup);
+    c.append(Instr::Push); c.append(1ULL);
+    c.append(Instr::Ifle);
+    const auto ifle_addr = c.code.size(); c.append(0ULL);
 
-  c.append(Instr::Push);
-  c.append(0ULL);
-  c.append(Instr::Call);
-  c.append(Instr::Print);
-  c.append(Instr::Exit);
+    c.append(Instr::Dup);                                   // [n n]
+    c.append(Instr::Push); c.append(1ULL); c.append(Instr::Sub);  // [n n-1]
+    c.append(Instr::Dup);
+    c.append(Instr::Push); c.append(1ULL); c.append(Instr::Sub);  // [n n-1 n-2]
+    c.append(Instr::Push);
+    const auto call1 = c.code.size(); c.append(0ULL);
+    c.append(Instr::Call);                                  // [n n-1 f(n-2)]
+    c.append(Instr::Swap);                                  // [n f2 n-1]
+    c.append(Instr::Push);
+    const auto call2 = c.code.size(); c.append(0ULL);
+    c.append(Instr::Call);                                  // [n f2 f1]
+    c.append(Instr::Add);                                   // [n sum]
+    c.append(Instr::Swap);
+    c.append(Instr::Pop);                                   // [sum]
 
-  const auto fib_method_addr = c.code.size();
-  c.append(Instr::Dup);
-  c.append(Instr::Push);
-  c.append(1ULL);
-  c.append(Instr::Ifle);
+    const auto ret_addr = c.code.size();
+    c.append(Instr::Ret);
 
-  const auto ifle_addr = c.code.size();
-  c.append(0ULL);
+    c.update_call_addr(call0, fib);
+    c.update_call_addr(call1, fib);
+    c.update_call_addr(call2, fib);
+    c.update_call_addr(ifle_addr, ret_addr);
 
-  c.append(Instr::Push);
-  c.append(1ULL);
-
-  c.append(Instr::Sub);
-  c.append(Instr::Call);
-  const auto fib1_call_addr = c.code.size();
-  c.append(0ULL);
-
-
-  const auto true_addr = c.code.size();
-  c.append(Instr::Ret);
-
-  c.update_call_addr(ifle_addr, true_addr);
-  run(c.code.data());
+    run(c.code.data());
 }
 
 int main() {
   test_call_if();
+  test_fib();
   return 0;
 }
