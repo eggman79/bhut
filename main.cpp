@@ -257,7 +257,7 @@ void test_simple() {
 
 void test_fib() {
     Code c;
-    c.append(Instr::Push); c.append(26ULL);
+    c.append(Instr::Push); c.append(40ULL);
     c.append(Instr::Push);
     const auto call0 = c.code.size(); c.append(0ULL);
     c.append(Instr::Call);

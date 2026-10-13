@@ -14,3 +14,14 @@ add_executable(myapp
     ext.asm
 )
 target_compile_features(myapp PRIVATE cxx_std_17)
+# Find GoogleTest
+find_package(GTest REQUIRED)
+
+# Link GoogleTest libraries to your target
+# Replace <your_target> with the actual target name (e.g., my_executable or my_library)
+
+target_link_libraries(myapp PRIVATE GTest::GTest GTest::Main)
+
+# Optionally, enable testing and add a test
+enable_testing()
+
